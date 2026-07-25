@@ -43,7 +43,16 @@ services:
   graphhopper:
     image: israelhikingmap/graphhopper:latest
     restart: unless-stopped
-    command: ["--input","/data/osm/${REGION_SLUG}-latest.osm.pbf","--config","/config/graphhopper.yml"]
+    # Do NOT use the image's default ENTRYPOINT (`./graphhopper.sh -c config-example.yml`).
+    # A compose `command:` is appended to that entrypoint, and the wrapper script derives
+    # its own graph directory from the input filename — it ignores `graph.location` from
+    # our config. Observed: it re-imported from the PBF into a fresh /data/default-gh,
+    # silently discarding the prepared graph (LM landmarks included) that `make graph`
+    # had just spent ~25 minutes building, and never began serving.
+    # Invoke the jar directly, exactly as the import does, so graph.location is honoured
+    # and startup is a load (seconds) rather than an import.
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["exec java $${JAVA_OPTS} -jar /graphhopper/graphhopper-web-*.jar server /config/graphhopper.yml"]
     environment:
       JAVA_OPTS: "-Xmx6g -Xms2g"
     volumes:
