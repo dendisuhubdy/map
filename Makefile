@@ -10,6 +10,9 @@ export
 verify:
 	@bash tests/smoke/run_all.sh
 
+fetch:
+	@bash scripts/fetch_osm.sh
+
 up:
 	docker compose up -d
 
