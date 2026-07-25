@@ -397,13 +397,15 @@ async fn every_object_in_the_schema_tree_is_closed() {
 async fn null_alternatives_are_pruned_before_graphhopper_sees_them() {
     use crate::tools::route::{body, prune_nulls};
 
+    // Uses a distance_influence at or above the landmark floor so this test covers
+    // pruning alone; the clamp is exercised separately below.
     let from_model = json!({
         "priority": [
             { "if": "road_class == MOTORWAY", "else_if": null, "else": null,
               "multiply_by": 0.05, "limit_to": null }
         ],
         "speed": null,
-        "distance_influence": 30
+        "distance_influence": 120
     });
 
     let pruned = prune_nulls(&from_model);
@@ -411,7 +413,7 @@ async fn null_alternatives_are_pruned_before_graphhopper_sees_them() {
         pruned,
         json!({
             "priority": [{ "if": "road_class == MOTORWAY", "multiply_by": 0.05 }],
-            "distance_influence": 30
+            "distance_influence": 120
         })
     );
 
