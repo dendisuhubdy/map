@@ -61,7 +61,7 @@ Both were found while working through implementation detail. They change the spe
 - Consumes: nothing
 - Produces: `make verify` runs every `tests/smoke/*.sh`; `assert_eq`, `assert_contains`, `assert_http_ok` helpers available to all later smoke tests
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/lib.sh`:
 
@@ -128,12 +128,12 @@ done
 exit $rc
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `make verify`
 Expected: FAIL with `make: *** No rule to make target 'verify'`
 
-- [ ] **Step 3: Write the minimal Makefile and supporting files**
+- [x] **Step 3: Write the minimal Makefile and supporting files**
 
 `.gitignore`:
 
@@ -188,12 +188,12 @@ down:
 all: fetch photon db dem graph tiles
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `cp .env.example .env && chmod +x tests/smoke/*.sh && make verify`
 Expected: PASS — exits 0 with no test files yet (loop finds nothing)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .gitignore .env.example Makefile tests/smoke/
@@ -211,7 +211,7 @@ git commit -m "chore: repo scaffolding and smoke-test harness"
 - Consumes: nothing
 - Produces: a droplet with Docker installed, block storage mounted at `$DATA_DIR`, firewall configured. All later tasks assume `/data` is writable and has >70 GB free.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_host.sh`:
 
@@ -235,12 +235,12 @@ fi
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_host.sh`
 Expected: FAIL — `/data` does not exist on a fresh machine
 
-- [ ] **Step 3: Provision, following the runbook**
+- [x] **Step 3: Provision, following the runbook**
 
 Write `docs/runbook.md` with these steps, then execute them:
 
@@ -268,12 +268,12 @@ fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `bash tests/smoke/test_host.sh`
 Expected: PASS — all four assertions ok, ~98G free
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/runbook.md tests/smoke/test_host.sh
@@ -292,7 +292,7 @@ git commit -m "docs: droplet provisioning runbook and host smoke test"
 - Consumes: `OSM_REGION`, `REGION_SLUG`, `DATA_DIR` from `.env`
 - Produces: `$DATA_DIR/osm/$REGION_SLUG-latest.osm.pbf`, MD5-verified. Tasks 6, 8, 9 all read this file.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_osm_pbf.sh`:
 
@@ -309,12 +309,12 @@ assert_contains "$(head -c 32 "$PBF" | tr -dc '[:print:]')" "OSMHeader" "PBF has
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_osm_pbf.sh`
 Expected: FAIL — `PBF present and >= 500MB` (file is 0 bytes / missing)
 
-- [ ] **Step 3: Write the fetch script**
+- [x] **Step 3: Write the fetch script**
 
 `scripts/fetch_osm.sh`:
 
@@ -351,12 +351,12 @@ fetch:
 	@bash scripts/fetch_osm.sh
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `chmod +x scripts/fetch_osm.sh && make fetch && bash tests/smoke/test_osm_pbf.sh`
 Expected: download completes, checksum matches, both assertions ok
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/fetch_osm.sh tests/smoke/test_osm_pbf.sh Makefile
@@ -379,14 +379,14 @@ The spec chose Photon 1.x with embedded OpenSearch. The Indonesia country extrac
 (452 MB, dated 2025-07-20) sits in a tree that is **not version-segmented**, so its
 compatibility with Photon 1.x is unknown. Resolve it empirically before building on it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 There is no code to test here — the deliverable is a decision. The gate is: `docs/decisions/photon-index-source.md` exists and names exactly one of the three branches below.
 
 Run: `test -f docs/decisions/photon-index-source.md`
 Expected: FAIL (file absent)
 
-- [ ] **Step 2: Download the extract and the Photon 1.x JAR**
+- [x] **Step 2: Download the extract and the Photon 1.x JAR**
 
 ```bash
 mkdir -p /data/photon && cd /data/photon
@@ -399,7 +399,7 @@ pbzip2 -cd photon-db-id-250720.tar.bz2 | tar x
 curl -fL -o photon.jar "<1.x release asset URL from the releases page>"
 ```
 
-- [ ] **Step 3: Attempt to start Photon 1.x against the extracted index**
+- [x] **Step 3: Attempt to start Photon 1.x against the extracted index**
 
 ```bash
 java -Xmx4G -jar photon.jar -data-dir /data/photon 2>&1 | tee /tmp/photon-start.log
@@ -411,7 +411,7 @@ Then, in another shell:
 curl -s 'http://localhost:2322/api?q=Bromo&limit=3' | jq .
 ```
 
-- [ ] **Step 4: Record the branch taken**
+- [x] **Step 4: Record the branch taken**
 
 Write `docs/decisions/photon-index-source.md` recording **exactly one**:
 
@@ -427,7 +427,7 @@ Write `docs/decisions/photon-index-source.md` recording **exactly one**:
 
 Record the actual `curl` output for "Bromo" in the decision file as evidence.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/decisions/photon-index-source.md
@@ -446,7 +446,7 @@ git commit -m "docs: resolve Photon index source (gate for make photon)"
 - Consumes: the decision from Task 4; `PHOTON_COUNTRY`, `DATA_DIR`
 - Produces: Photon on `photon:2322` inside the Compose network. `GET /api?q=<name>&limit=<n>` returns GeoJSON `FeatureCollection`. Plan B's `geocode` tool calls this.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_photon.sh`:
 
@@ -476,12 +476,12 @@ assert_eq "yes" "$in_box" "top result inside Indonesia bbox (${lat},${lon})"
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_photon.sh`
 Expected: FAIL — `photon status endpoint` returns 000 (nothing listening)
 
-- [ ] **Step 3: Implement the fetch script and service**
+- [x] **Step 3: Implement the fetch script and service**
 
 `scripts/fetch_photon.sh` (branch (a) form; adjust per the Task 4 decision):
 
@@ -532,12 +532,12 @@ photon:
 	@bash scripts/fetch_photon.sh
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `chmod +x scripts/fetch_photon.sh && make photon && docker compose up -d photon && sleep 45 && bash tests/smoke/test_photon.sh`
 Expected: all four assertions ok; Bromo resolves to roughly `-7.94, 112.95`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/fetch_photon.sh tests/smoke/test_photon.sh Makefile docker-compose.yml
@@ -556,7 +556,7 @@ git commit -m "feat: make photon — geocoding service with index fetch"
 - Consumes: `$DATA_DIR/osm/$REGION_SLUG-latest.osm.pbf` from Task 3
 - Produces: tables `osm_poi(osm_id bigint, name text, tags jsonb, geom geometry(Point,4326))` and `osm_place(...)`, with a GiST index on `geom` and a GIN index on `tags`. Plan B's `search_poi` tool queries `osm_poi`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_postgis.sh`:
 
@@ -591,12 +591,12 @@ assert_contains "$plan" "Index" "bbox query uses an index"
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_postgis.sh`
 Expected: FAIL — `postgis reachable` (no container)
 
-- [ ] **Step 3: Implement the Lua config and service**
+- [x] **Step 3: Implement the Lua config and service**
 
 `config/osm2pgsql.lua`:
 
@@ -696,12 +696,12 @@ db:
 
 Note: `PGPASSWORD` must be exported for the osm2pgsql container; add `-e PGPASSWORD=$(POSTGRES_PASSWORD)` to the `docker run` line.
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `make db && bash tests/smoke/test_postgis.sh`
 Expected: all five assertions ok; import takes 20–40 minutes
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add config/osm2pgsql.lua tests/smoke/test_postgis.sh Makefile docker-compose.yml
@@ -724,7 +724,7 @@ Pre-fetching rather than letting GraphHopper download on demand makes the graph 
 reproducible and offline-repeatable. Ocean tiles do not exist and return 404 — the script
 must treat that as normal, not as failure.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_dem.sh`:
 
@@ -748,12 +748,12 @@ assert_file_min_size "$DEM/S08/S08E112.hgt.gz" 100000 "S08E112 is a real tile"
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_dem.sh`
 Expected: FAIL — 0 DEM tiles
 
-- [ ] **Step 3: Write the fetch script**
+- [x] **Step 3: Write the fetch script**
 
 `scripts/fetch_dem.sh`:
 
@@ -799,12 +799,12 @@ dem:
 	@bash scripts/fetch_dem.sh
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `chmod +x scripts/fetch_dem.sh && make dem && bash tests/smoke/test_dem.sh`
 Expected: several hundred tiles fetched, ~8 GB, all three assertions ok
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/fetch_dem.sh tests/smoke/test_dem.sh Makefile
@@ -828,7 +828,7 @@ the preprocessed graph and cannot serve an arbitrary runtime `custom_model`. LM 
 can. The config below prepares LM for the flexible profile and keeps CH only for a fixed
 fast profile.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_graphhopper.sh`:
 
@@ -866,12 +866,12 @@ assert_eq "3" "$ncoord" "coordinates carry elevation (3 ordinates)"
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_graphhopper.sh`
 Expected: FAIL — `graphhopper health` returns 000
 
-- [ ] **Step 3: Write the config and service**
+- [x] **Step 3: Write the config and service**
 
 `config/graphhopper.yml`:
 
@@ -944,12 +944,12 @@ graph:
 	docker compose up -d graphhopper
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `make graph && sleep 60 && bash tests/smoke/test_graphhopper.sh`
 Expected: all four assertions ok. Import takes 20–40 minutes. If `runtime custom_model accepted` fails with a 400 mentioning CH, `profiles_lm` did not prepare — check the import log for `prepare.lm`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add config/graphhopper.yml tests/smoke/test_graphhopper.sh Makefile docker-compose.yml
@@ -968,7 +968,7 @@ git commit -m "feat: make graph — GraphHopper with LM for runtime custom model
 - Consumes: the PBF from Task 3
 - Produces: `$DATA_DIR/tiles/$REGION_SLUG.pmtiles`, served on `tiles:8080`. Plan C's MapLibre frontend consumes `http://<host>/tiles/<slug>.pmtiles` via the `pmtiles://` protocol.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_tiles.sh`:
 
@@ -991,12 +991,12 @@ assert_file_min_size /tmp/tile.mvt 1000 "z10 Java tile has content"
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_tiles.sh`
 Expected: FAIL — pmtiles file missing
 
-- [ ] **Step 3: Implement the build and service**
+- [x] **Step 3: Implement the build and service**
 
 Add to `docker-compose.yml`:
 
@@ -1027,12 +1027,12 @@ tiles:
 	docker compose up -d tiles
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `make tiles && bash tests/smoke/test_tiles.sh`
 Expected: all four assertions ok. Build takes 15–30 minutes and needs ~5 GB transient in `/data/tmp`, which the target removes afterwards.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/smoke/test_tiles.sh Makefile docker-compose.yml
@@ -1051,7 +1051,7 @@ git commit -m "feat: make tiles — Planetiler PMTiles basemap and server"
 - Consumes: every service from Tasks 5–9
 - Produces: TLS on `https://$SITE_HOST`, with `/tiles/*` proxied to the tile server and `/api/*` reserved for Plan B's Rust service. `make verify` runs the whole smoke suite.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/smoke/test_edge.sh`:
 
@@ -1074,12 +1074,12 @@ done
 finish
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `bash tests/smoke/test_edge.sh`
 Expected: FAIL — `edge healthz over TLS` returns 000
 
-- [ ] **Step 3: Implement the edge**
+- [x] **Step 3: Implement the edge**
 
 `config/Caddyfile`:
 
@@ -1136,12 +1136,12 @@ Create `frontend/index.html` as a placeholder so the mount is valid:
 Note: `handle /api/*` references a service Plan B creates. Until then Caddy returns 502 for
 `/api/*`, which is expected and is not covered by this task's smoke test.
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `docker compose up -d caddy && sleep 20 && bash tests/smoke/test_edge.sh && make verify`
 Expected: `test_edge.sh` passes all six assertions; `make verify` runs every suite green
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add config/Caddyfile frontend/index.html tests/smoke/test_edge.sh docker-compose.yml
@@ -1149,6 +1149,25 @@ git commit -m "feat: Caddy edge with TLS and full-stack verification"
 ```
 
 ---
+
+## Outcome — completed 2026-07-25
+
+`make verify` exits 0 on `map-sgp1`; all 46 assertions across 8 suites pass. Six findings
+surfaced during execution that the plan as written did not anticipate:
+
+| # | Finding | Where it now lives |
+|---|---|---|
+| 1 | `docker compose run` inherits the service `mem_limit`, so the graph import ran inside the 7 GB *serving* budget and thrashed at 0.4% CPU. LM preparation was later measured at 11.28 GB — it would have been OOM-killed | `Makefile` (`graph` uses `docker run --memory 13g`), `docs/runbook.md` |
+| 2 | The GraphHopper image's `ENTRYPOINT` wrapper derives its own graph directory and ignores `graph.location`, so the serving container re-imported into `/data/default-gh` and discarded the prepared graph | `docker-compose.yml` (explicit `entrypoint:`) |
+| 3 | `elevation: true` must be sent per request; a 3D graph alone returns 2-ordinate coordinates while still reporting `ascend` | spec §8 table, `tests/smoke/test_graphhopper.sh` |
+| 4 | `osmdata.openstreetmap.de` throttles DigitalOcean SGP1 to ~10 kB/s (~26 h for the 927 MB water polygons) while serving 4.3 MB/s elsewhere. Planetiler renders this as a stalled progress bar, never an error | `Makefile` (throughput floor + side-load instructions), `docs/runbook.md` |
+| 5 | The `z10/822/526` tile this plan specified for the "East Java" content assertion is open water in the Java Sea and serves 163 bytes. Surabaya is `z10/832/532` | `tests/smoke/test_tiles.sh` |
+| 6 | `assert_http_ok`'s `curl … \|\| echo 000` double-counted to `000000`, which would have made the port-exposure check fail on its *passing* value | `tests/smoke/lib.sh` (`http_code` helper) |
+
+Deviations from the stated budget, both benign:
+
+- **Artifacts total 25 GB, not ~22 GB** — `/data/dem` is 18 GB rather than the estimated 8 GB, and `/data/sources` (1.4 GB of Planetiler inputs) was unbudgeted. The droplet has 309 GB, so 275 GB remains free.
+- **No block-storage volume** — see `docs/runbook.md`; the droplet ships 320 GB of local SSD.
 
 ## Definition of done
 
