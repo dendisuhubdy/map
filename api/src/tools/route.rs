@@ -22,6 +22,26 @@ pub fn parse_waypoints(input: &Value, key: &str) -> Result<Vec<[f64; 2]>, String
     Ok(out)
 }
 
+/// Recursively drop null-valued object entries.
+///
+/// Strict tool use requires every property to appear in `required`, so the model
+/// sends the unused half of each either/or as `null` — `{"if": "...", "else_if":
+/// null, "else": null, "multiply_by": 0.05, "limit_to": null}`. GraphHopper rejects
+/// a rule that carries those keys at all, so they are stripped here rather than
+/// being made optional in the schema (which strict mode does not allow).
+pub fn prune_nulls(v: &Value) -> Value {
+    match v {
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .filter(|(_, val)| !val.is_null())
+                .map(|(k, val)| (k.clone(), prune_nulls(val)))
+                .collect(),
+        ),
+        Value::Array(items) => Value::Array(items.iter().map(prune_nulls).collect()),
+        other => other.clone(),
+    }
+}
+
 /// Build the `/route` request body.
 ///
 /// Three parameters here do NOT default to what we need, and each was verified
@@ -43,7 +63,12 @@ pub fn body(waypoints: &[[f64; 2]], custom_model: Option<&Value>) -> Value {
     });
     if let Some(cm) = custom_model {
         if !cm.is_null() {
-            b["custom_model"] = cm.clone();
+            let pruned = prune_nulls(cm);
+            // An all-null model prunes to `{}`, which GraphHopper rejects as an
+            // empty custom model. Treat it as "no preferences expressed".
+            if pruned.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
+                b["custom_model"] = pruned;
+            }
         }
     }
     b

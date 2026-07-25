@@ -362,6 +362,69 @@ async fn tool_schemas_avoid_unsupported_json_schema_keywords() {
     assert!(found.is_empty(), "unsupported schema keywords present: {found:?}");
 }
 
+/// Strict tool use also rejects `additionalProperties: true` — every object in the
+/// tree must be closed. This is why the CustomModel is declared structurally rather
+/// than left free-form.
+#[tokio::test]
+async fn every_object_in_the_schema_tree_is_closed() {
+    fn walk(v: &Value, path: &str, open: &mut Vec<String>) {
+        if let Value::Object(map) = v {
+            let declares_object = map
+                .get("type")
+                .map(|t| t == "object" || t.as_array().map(|a| a.contains(&json!("object"))).unwrap_or(false))
+                .unwrap_or(false);
+            if declares_object && map.get("additionalProperties") != Some(&json!(false)) {
+                open.push(path.to_string());
+            }
+            for (k, child) in map {
+                walk(child, &format!("{path}.{k}"), open);
+            }
+        } else if let Value::Array(items) = v {
+            for (i, child) in items.iter().enumerate() {
+                walk(child, &format!("{path}[{i}]"), open);
+            }
+        }
+    }
+
+    let mut open = Vec::new();
+    walk(&crate::tools::definitions(), "tools", &mut open);
+    assert!(open.is_empty(), "objects left open: {open:?}");
+}
+
+/// The model must send every property, so unused alternatives arrive as null.
+/// GraphHopper rejects a rule carrying them, so they are pruned on the way out.
+#[tokio::test]
+async fn null_alternatives_are_pruned_before_graphhopper_sees_them() {
+    use crate::tools::route::{body, prune_nulls};
+
+    let from_model = json!({
+        "priority": [
+            { "if": "road_class == MOTORWAY", "else_if": null, "else": null,
+              "multiply_by": 0.05, "limit_to": null }
+        ],
+        "speed": null,
+        "distance_influence": 30
+    });
+
+    let pruned = prune_nulls(&from_model);
+    assert_eq!(
+        pruned,
+        json!({
+            "priority": [{ "if": "road_class == MOTORWAY", "multiply_by": 0.05 }],
+            "distance_influence": 30
+        })
+    );
+
+    let b = body(&[[112.75, -7.25], [112.63, -7.96]], Some(&from_model));
+    assert_eq!(b["custom_model"], pruned);
+
+    // A model where the agent filled in nothing prunes to {}, which GraphHopper
+    // rejects — treat it as no preference rather than forwarding an empty object.
+    let empty = json!({ "priority": null, "speed": null, "distance_influence": null });
+    let b = body(&[[112.75, -7.25], [112.63, -7.96]], Some(&empty));
+    assert!(b.get("custom_model").is_none());
+}
+
 /// The three non-default /route parameters, asserted at the point they are built.
 /// A regression here is silent: elevation would vanish while ascend still reports,
 /// and custom models would 400 only for requests that carry one.

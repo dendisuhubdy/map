@@ -63,6 +63,62 @@ impl Tools {
     }
 }
 
+/// GraphHopper's CustomModel, declared structurally.
+///
+/// Strict tool use forbids `additionalProperties: true`, so a free-form object is
+/// not an option — every shape has to be spelled out. That is a feature rather than
+/// a workaround: the model can now only emit rule objects that are valid by
+/// construction, instead of inventing CustomModel keys GraphHopper would reject.
+///
+/// Strict also wants every property in `required`, so the alternatives within a
+/// rule (`if` / `else_if` / `else`, `multiply_by` / `limit_to`) are all nullable and
+/// all required. `prune_nulls` strips the unused ones before the request leaves us —
+/// GraphHopper rejects a rule carrying `"if": null`.
+fn rule_schema(what: &str) -> Value {
+    json!({
+        "type": ["array", "null"],
+        "description": format!("{what} Each entry selects edges with exactly one of 'if', 'else_if' or 'else', then applies exactly one of 'multiply_by' or 'limit_to'. Set the others to null."),
+        "items": {
+            "type": "object",
+            "properties": {
+                "if": {
+                    "type": ["string", "null"],
+                    "description": "Condition over encoded values, e.g. \"road_class == MOTORWAY\", \"toll != NO\", \"curvature < 0.8\", \"average_slope > 6\". Use \"true\" to match everything."
+                },
+                "else_if": { "type": ["string", "null"], "description": "Condition applied only if the preceding rule did not match." },
+                "else": { "type": ["string", "null"], "description": "Set to \"\" to apply to everything the preceding rules missed." },
+                "multiply_by": {
+                    "type": ["number", "null"],
+                    "description": "Scale factor, 0 to 1. 0.05 strongly discourages, 1 is neutral."
+                },
+                "limit_to": {
+                    "type": ["number", "null"],
+                    "description": "Hard ceiling for the matched edges. In a speed rule this is km/h."
+                }
+            },
+            "required": ["if", "else_if", "else", "multiply_by", "limit_to"],
+            "additionalProperties": false
+        }
+    })
+}
+
+fn custom_model_schema() -> Value {
+    json!({
+        "type": ["object", "null"],
+        "description": "GraphHopper CustomModel expressing the trip's preferences. Null for a plain fastest route. Encoded values available: road_class, road_environment, surface, smoothness, curvature, average_slope, max_slope, toll, track_type, max_speed. Example — scenic backroads: priority [{if: \"road_class == MOTORWAY\", multiply_by: 0.05}, {if: \"curvature < 0.8\", multiply_by: 0.4}] with distance_influence 30.",
+        "properties": {
+            "priority": rule_schema("How strongly to prefer or avoid matching roads."),
+            "speed": rule_schema("Caps on travel speed for matching roads."),
+            "distance_influence": {
+                "type": ["number", "null"],
+                "description": "How much detour the preferences may cost. 0 ignores distance entirely; 30 is a moderate trade; 100+ keeps routes close to the shortest path."
+            }
+        },
+        "required": ["priority", "speed", "distance_influence"],
+        "additionalProperties": false
+    })
+}
+
 /// The four tools, declared `strict: true` with `additionalProperties: false` and
 /// every property listed in `required` — optional arguments are expressed as
 /// nullable types rather than omitted keys. That combination is what lets the Rust
@@ -136,11 +192,7 @@ pub fn definitions() -> Value {
                         "description": "Routing profile. Only 'car' is available.",
                         "enum": ["car"]
                     },
-                    "custom_model": {
-                        "type": ["object", "null"],
-                        "description": "GraphHopper CustomModel JSON. Use 'priority' rules over encoded values road_class, road_environment, surface, curvature, average_slope, max_slope, toll, track_type, and 'distance_influence' to trade directness against preference. Example: {\"priority\":[{\"if\":\"road_class == MOTORWAY\",\"multiply_by\":0.05},{\"if\":\"toll != NO\",\"multiply_by\":0.1}],\"distance_influence\":30}",
-                        "additionalProperties": true
-                    }
+                    "custom_model": custom_model_schema()
                 },
                 "required": ["waypoints", "profile", "custom_model"],
                 "additionalProperties": false
