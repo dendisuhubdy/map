@@ -42,6 +42,46 @@ pub fn prune_nulls(v: &Value) -> Value {
     }
 }
 
+/// GraphHopper refuses a query-time `distance_influence` below the value its
+/// landmark preparation was built against:
+///
+///   "CustomModel in query can only use distance_influence bigger or equal to
+///    90.0, but was: 40.0"
+///
+/// The bound exists because LM's A* heuristic is only admissible while query
+/// weights stay at or above the prepared ones — a lower influence could make the
+/// heuristic overestimate and return a wrong path. Nothing below the floor is
+/// reachable at query time, so clamping and saying so beats failing the call and
+/// making the agent spend a round trip rediscovering the limit.
+pub const MIN_DISTANCE_INFLUENCE: f64 = 90.0;
+
+/// Returns the usable model plus a note when the request had to be adjusted.
+pub fn normalize_custom_model(cm: &Value) -> (Option<Value>, Option<String>) {
+    if cm.is_null() {
+        return (None, None);
+    }
+    let mut pruned = prune_nulls(cm);
+    let mut note = None;
+
+    if let Some(di) = pruned.get("distance_influence").and_then(Value::as_f64) {
+        if di < MIN_DISTANCE_INFLUENCE {
+            pruned["distance_influence"] = json!(MIN_DISTANCE_INFLUENCE);
+            note = Some(format!(
+                "distance_influence {di} was raised to {MIN_DISTANCE_INFLUENCE}: the graph's \
+                 landmark preparation rejects anything lower. {MIN_DISTANCE_INFLUENCE} already \
+                 allows the most detour available — express stronger preferences through the \
+                 priority rules instead."
+            ));
+        }
+    }
+
+    // An all-null model prunes to `{}`, which GraphHopper rejects as empty.
+    match pruned.as_object() {
+        Some(o) if !o.is_empty() => (Some(pruned), note),
+        _ => (None, note),
+    }
+}
+
 /// Build the `/route` request body.
 ///
 /// Three parameters here do NOT default to what we need, and each was verified
@@ -62,13 +102,8 @@ pub fn body(waypoints: &[[f64; 2]], custom_model: Option<&Value>) -> Value {
         "instructions": false,
     });
     if let Some(cm) = custom_model {
-        if !cm.is_null() {
-            let pruned = prune_nulls(cm);
-            // An all-null model prunes to `{}`, which GraphHopper rejects as an
-            // empty custom model. Treat it as "no preferences expressed".
-            if pruned.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
-                b["custom_model"] = pruned;
-            }
+        if let (Some(model), _) = normalize_custom_model(cm) {
+            b["custom_model"] = model;
         }
     }
     b
@@ -130,7 +165,15 @@ pub async fn run(t: &Tools, input: &Value) -> ToolOutcome {
         "properties": { "kind": "route", "distance_m": distance, "duration_ms": time_ms }
     });
 
+    // If we had to adjust the request, tell the agent — a silently different route
+    // is worse than a slightly noisier tool result.
+    let note = input
+        .get("custom_model")
+        .map(|cm| normalize_custom_model(cm).1)
+        .unwrap_or(None);
+
     let summary = json!({
+        "note": note,
         "distance_m": distance,
         "duration_ms": time_ms,
         "duration_human": human_duration(time_ms),

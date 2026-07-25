@@ -425,6 +425,33 @@ async fn null_alternatives_are_pruned_before_graphhopper_sees_them() {
     assert!(b.get("custom_model").is_none());
 }
 
+/// GraphHopper rejects a query-time distance_influence below what LM was prepared
+/// against. Observed live: "CustomModel in query can only use distance_influence
+/// bigger or equal to 90.0, but was: 40.0". Nothing below the floor is reachable,
+/// so we clamp and report rather than burning an agent round trip on the error.
+#[tokio::test]
+async fn distance_influence_below_the_landmark_floor_is_clamped_and_reported() {
+    use crate::tools::route::{normalize_custom_model, MIN_DISTANCE_INFLUENCE};
+
+    let too_low = json!({
+        "priority": [{ "if": "road_class == MOTORWAY", "else_if": null, "else": null,
+                       "multiply_by": 0.02, "limit_to": null }],
+        "speed": null,
+        "distance_influence": 40
+    });
+    let (model, note) = normalize_custom_model(&too_low);
+    let model = model.expect("model survives clamping");
+    assert_eq!(model["distance_influence"], json!(MIN_DISTANCE_INFLUENCE));
+    let note = note.expect("the adjustment is reported back to the agent");
+    assert!(note.contains("90"), "note should name the floor: {note}");
+
+    // At or above the floor the model is forwarded untouched, with no note.
+    let fine = json!({ "priority": null, "speed": null, "distance_influence": 150 });
+    let (model, note) = normalize_custom_model(&fine);
+    assert_eq!(model.unwrap()["distance_influence"], json!(150));
+    assert!(note.is_none());
+}
+
 /// The three non-default /route parameters, asserted at the point they are built.
 /// A regression here is silent: elevation would vanish while ascend still reports,
 /// and custom models would 400 only for requests that carry one.

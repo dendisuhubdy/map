@@ -111,7 +111,7 @@ fn custom_model_schema() -> Value {
             "speed": rule_schema("Caps on travel speed for matching roads."),
             "distance_influence": {
                 "type": ["number", "null"],
-                "description": "How much detour the preferences may cost. 0 ignores distance entirely; 30 is a moderate trade; 100+ keeps routes close to the shortest path."
+                "description": "How much detour the preferences may cost. MINIMUM 90 — the graph's landmark preparation rejects anything lower, and values below it are raised to 90 automatically. 90 already permits the most detour available; 150 keeps closer to the fastest path; 300+ is nearly shortest-path. To push preferences harder, lower the multiply_by in the priority rules rather than lowering this."
             }
         },
         "required": ["priority", "speed", "distance_influence"],
