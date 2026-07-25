@@ -23,11 +23,18 @@ assert_contains() {
   fi
 }
 
+# Emits the HTTP status, or 000 if the request never got one. NOT `curl ... || echo 000`:
+# curl already writes 000 for %{http_code} on a failed request and *then* exits non-zero,
+# so the fallback concatenates into a nonsense '000000' that matches no expectation.
+http_code() {
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time "${2:-10}" "$1" 2>/dev/null) || true
+  echo "${code:-000}"
+}
+
 assert_http_ok() {
   local url="$1" msg="${2:-}"
-  local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || echo 000)
-  assert_eq "200" "$code" "${msg} (${url})"
+  assert_eq "200" "$(http_code "$url")" "${msg} (${url})"
 }
 
 assert_file_min_size() {

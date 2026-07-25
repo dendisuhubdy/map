@@ -1,0 +1,24 @@
+{$SITE_HOST} {
+	encode gzip
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# PMTiles is read over HTTP range requests, so the proxy must not buffer or
+	# rewrite them. handle_path strips the /tiles prefix the tile server does not expect.
+	handle_path /tiles/* {
+		reverse_proxy tiles:8080
+	}
+
+	# Reserved for the Rust API that Plan B delivers. Until that service exists this
+	# returns 502, which is expected and deliberately not asserted by test_edge.sh.
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		file_server
+	}
+}
