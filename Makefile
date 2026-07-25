@@ -59,7 +59,9 @@ graph:
 	  -v $(DATA_DIR):/data -v $(PWD)/config:/config \
 	  --entrypoint /bin/bash israelhikingmap/graphhopper:latest -c \
 	  "java -Xmx7g -jar /graphhopper/graphhopper-web-*.jar import /config/graphhopper.yml"
-	docker compose up -d photon postgis graphhopper
+	@# Bring the whole stack back, not just the services this target stopped: an import
+	@# target that leaves some other service down makes `make all` order-dependent.
+	docker compose up -d
 
 # Planetiler's own --download fetches this, but from this droplet the route to
 # osmdata.openstreetmap.de throttles to ~10 kB/s: 927 MB would take ~26 hours, and
@@ -94,7 +96,7 @@ tiles: $(DATA_DIR)/sources/water-polygons-split-3857.zip
 	  --output=/data/tiles/$(REGION_SLUG).pmtiles \
 	  --tmpdir=/data/tmp --download --force
 	rm -rf $(DATA_DIR)/tmp
-	docker compose up -d tiles postgis photon
+	docker compose up -d
 
 up:
 	docker compose up -d
