@@ -19,8 +19,16 @@ photon:
 
 db:
 	docker compose up -d postgis
-	@echo "waiting for postgres..."
-	@until docker compose exec -T postgis pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1; do sleep 2; done
+	@echo "waiting for postgres to accept TCP..."
+	@# NOT `docker compose exec pg_isready`: during first-run initdb the entrypoint
+	@# runs a temporary server on a unix socket only, so the in-container check
+	@# passes while the TCP listener osm2pgsql needs is still down. Probe the real path.
+	@for i in $$(seq 1 90); do \
+	  pg_isready -h 127.0.0.1 -p 5432 -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1 && break; \
+	  sleep 2; \
+	done
+	@pg_isready -h 127.0.0.1 -p 5432 -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1 \
+	  || { echo "postgres did not accept TCP in 180s" >&2; exit 1; }
 	PGPASSWORD=$(POSTGRES_PASSWORD) osm2pgsql -O flex -S config/osm2pgsql.lua \
 	  -H 127.0.0.1 -P 5432 -U $(POSTGRES_USER) -d $(POSTGRES_DB) \
 	  --slim --drop -C 6000 \
