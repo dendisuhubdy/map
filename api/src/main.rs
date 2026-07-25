@@ -68,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/healthz", get(|| async { "ok" }))
         .route("/api/health", get(health))
         .route("/api/chat", post(chat))
+        .route("/api/tool", post(run_tool))
         .layer(CorsLayer::permissive())
         .with_state(Arc::new(state));
 
@@ -84,6 +85,29 @@ async fn health(State(st): State<Arc<AppState>>) -> impl IntoResponse {
         "anthropic_key_present": !st.cfg.anthropic_api_key.is_empty(),
         "postgis": st.tools.pool.is_some(),
     }))
+}
+
+#[derive(Deserialize)]
+struct ToolRequest {
+    name: String,
+    input: Value,
+}
+
+/// Run one tool directly, bypassing the model.
+///
+/// This is design spec §13's first test layer: the tool functions exercised against
+/// real Photon, real PostGIS and real GraphHopper, with no mocking and no API key.
+/// It reads public OSM data and holds no secrets, which is why it can sit on the
+/// same public prefix as /api/chat.
+async fn run_tool(
+    State(st): State<Arc<AppState>>,
+    Json(req): Json<ToolRequest>,
+) -> impl IntoResponse {
+    let outcome = st.tools.dispatch(&req.name, &req.input).await;
+    let parsed: Value =
+        serde_json::from_str(&outcome.content).unwrap_or_else(|_| json!(outcome.content));
+    let status = if outcome.is_error { StatusCode::BAD_REQUEST } else { StatusCode::OK };
+    (status, Json(json!({ "ok": !outcome.is_error, "result": parsed })))
 }
 
 #[derive(Deserialize)]
