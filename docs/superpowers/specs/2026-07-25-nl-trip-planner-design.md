@@ -160,6 +160,16 @@ Four tools, all declared with `strict: true` (plus `additionalProperties: false`
 | `route(waypoints[], profile, custom_model?)` | GraphHopper | geometry, distance, duration, elevation |
 | `elevation_profile(geometry)` | GraphHopper | ascent/descent, slope samples |
 
+Every `/route` request the `route` and `elevation_profile` tools issue must set three
+parameters that do **not** default to what those tools need (*added 2026-07-25, verified
+against the running service*):
+
+| Parameter | Value | Why |
+|---|---|---|
+| `elevation` | `true` | Defaults to `false`, and then GraphHopper returns 2-ordinate coordinates **even on a 3D graph**. `ascend`/`descend` are still reported, so a missing third ordinate is easy to overlook. `elevation_profile` cannot work without it |
+| `ch.disable` | `true` | Required whenever a `custom_model` is sent — see decision 8 |
+| `points_encoded` | `false` | Otherwise geometry comes back as an encoded polyline rather than GeoJSON |
+
 `route`'s `custom_model` is where preference expression lives — a GraphHopper CustomModel JSON the agent composes from the user's language, over encoded values `road_class`, `road_environment`, `surface`, `curvature`, `average_slope`, `toll`, `track_type`:
 
 ```json
