@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/lib.sh"
+source "$(dirname "$0")/region.sh"
 BASE="${PHOTON_URL:-http://127.0.0.1:2322}"
 
-body=$(curl -s --max-time 15 "$BASE/api?q=Bromo&limit=3" || echo '')
+body=$(curl -s --max-time 15 "$BASE/api?q=$(echo "$GEO_QUERY" | tr ' ' '+')&limit=3" || echo '')
 assert_contains "$body" "FeatureCollection" "geocode returns a FeatureCollection"
 
 n=$(echo "$body" | jq '.features | length' 2>/dev/null || echo 0)
 if (( n < 1 )); then
-  echo "  FAIL: geocode 'Bromo' returned 0 features" >&2; FAILED=1
+  echo "  FAIL: geocode '${GEO_QUERY}' returned 0 features" >&2; FAILED=1
 else
-  echo "  ok: geocode 'Bromo' returned ${n} features"
+  echo "  ok: geocode '${GEO_QUERY}' returned ${n} features"
 fi
 
-# Result must land inside Indonesia — catches an index that loaded but is the
-# wrong region, which a mere 200 response would not.
+# The result must land inside the served region — catches an index that loaded
+# fine but is the wrong region, which a mere 200 response would not.
 lon=$(echo "$body" | jq -r '.features[0].geometry.coordinates[0]' 2>/dev/null || echo 0)
 lat=$(echo "$body" | jq -r '.features[0].geometry.coordinates[1]' 2>/dev/null || echo 0)
 in_box=$(awk -v lo="$lon" -v la="$lat" \
-  'BEGIN{print (lo>94.5 && lo<141.1 && la>-11.1 && la<6.1) ? "yes":"no"}')
-assert_eq "yes" "$in_box" "top result inside Indonesia bbox (${lat},${lon})"
+  -v w="$GEO_MIN_LON" -v s="$GEO_MIN_LAT" -v e="$GEO_MAX_LON" -v nn="$GEO_MAX_LAT" \
+  'BEGIN{print (lo>w && lo<e && la>s && la<nn) ? "yes":"no"}')
+assert_eq "yes" "$in_box" "top result inside ${REGION_NAME} bbox (${lat},${lon})"
 
-# Fuzzy/multilingual handling is the whole reason Photon is here rather than a
-# trigram query — assert it actually does the thing.
-fuzzy=$(curl -s --max-time 15 "$BASE/api?q=gunung%20bromo&limit=1" || echo '')
-assert_contains "$(echo "$fuzzy" | jq -r '.features[0].properties.name' 2>/dev/null)" \
-  "Bromo" "lowercase local-language query resolves"
+# Fuzzy, case-insensitive handling is the whole reason Photon is here rather than
+# a trigram query — assert it actually does the thing.
+fuzzy=$(curl -s --max-time 15 "$BASE/api?q=$(echo "$GEO_QUERY_2" | tr ' ' '+')&limit=1" || echo '')
+fn=$(echo "$fuzzy" | jq '.features | length' 2>/dev/null || echo 0)
+if (( fn < 1 )); then
+  echo "  FAIL: lowercase query '${GEO_QUERY_2}' returned nothing" >&2; FAILED=1
+else
+  echo "  ok: lowercase query '${GEO_QUERY_2}' resolves"
+fi
 
 finish

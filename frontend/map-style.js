@@ -9,7 +9,10 @@
 // Glyphs come from the Protomaps open basemap asset host — MapLibre needs SDF font
 // atlases and we do not run a glyph server. No commercial map API is involved.
 
-const TILE_BASE = `${location.origin}/tiles/indonesia`;
+// The served region. Must match REGION_SLUG in .env — the tile server namespaces
+// each archive under its own slug, so a mismatch yields 404s for every tile.
+export const REGION = 'california';
+const TILE_BASE = `${location.origin}/tiles/${REGION}`;
 
 const C = {
   land: '#14110E',
