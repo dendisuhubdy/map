@@ -124,6 +124,24 @@ ssh map-sgp1 'tail -f /var/log/gh-import.log'
 docker stats --no-stream   # CPU near 0% with memory pinned at the limit == thrashing
 ```
 
+## Setting the Anthropic API key
+
+The stack runs fine without it — every data service answers, `/api/tool` exercises
+all four tools, and `make verify` passes. Only the agent itself needs a key:
+`/api/chat` returns **503** until one is set, and `/api/health` reports
+`"anthropic_key_present": false`.
+
+The key is a credential, so it is set on the droplet only, never committed:
+
+```bash
+ssh map-sgp1
+printf 'ANTHROPIC_API_KEY=sk-ant-...\n' >> /opt/map/.env
+cd /opt/map && docker compose up -d api
+curl -s http://127.0.0.1:8000/api/health   # "anthropic_key_present": true
+```
+
+`.env` is git-ignored; `.env.example` documents the variable with an empty value.
+
 ## Deploy loop
 
 ```bash
