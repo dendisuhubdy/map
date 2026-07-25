@@ -13,6 +13,10 @@ verify:
 fetch:
 	@bash scripts/fetch_osm.sh
 
+photon:
+	@bash scripts/fetch_photon.sh
+	docker compose up -d photon
+
 up:
 	docker compose up -d
 

@@ -1,0 +1,22 @@
+services:
+  # Geocoding. Pinned to Photon 0.7.4 on Elasticsearch — the published country
+  # extract is an ES index and will not load on the 1.x/OpenSearch line.
+  # See docs/decisions/photon-index-source.md.
+  photon:
+    image: eclipse-temurin:21-jre
+    restart: unless-stopped
+    working_dir: /photon
+    command: >
+      java -Xmx4G -jar /photon/photon-${PHOTON_VERSION:-0.7.4}.jar
+      -data-dir /photon -listen-ip 0.0.0.0 -listen-port 2322
+    volumes:
+      - ${DATA_DIR}/photon:/photon
+    ports:
+      - "127.0.0.1:2322:2322"
+    mem_limit: 5g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf 'http://127.0.0.1:2322/api?q=test&limit=1' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
