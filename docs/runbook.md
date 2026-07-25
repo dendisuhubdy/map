@@ -112,6 +112,18 @@ same 7 GB cgroup, which thrashed at 0.4% CPU and 26 MB/s of disk reads. `make gr
 therefore uses a plain `docker run --memory 13g` with `-Xmx7g`, run with the serving
 stack stopped — leaving ~6 GB of page cache for the DEM. Same import, same box: 198% CPU.
 
+The cap was not merely slow, it was fatal: LM preparation was later measured at
+**11.28 GiB** resident. Under the old 7 GB limit the import would have been OOM-killed
+at that point — after ~30 minutes of work, and with no obvious cause in the GraphHopper
+log, since the kernel kills the process rather than the JVM throwing.
+
+Watch an import with:
+
+```bash
+ssh map-sgp1 'tail -f /var/log/gh-import.log'
+docker stats --no-stream   # CPU near 0% with memory pinned at the limit == thrashing
+```
+
 ## Deploy loop
 
 ```bash
