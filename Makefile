@@ -44,9 +44,21 @@ dem:
 
 graph:
 	@echo "stopping serving stack — the import wants the RAM"
-	docker compose stop photon postgis || true
-	docker compose run --rm --entrypoint /bin/bash graphhopper -c \
-	  "java -Xmx10g -jar /graphhopper/graphhopper-web-*.jar import /config/graphhopper.yml"
+	docker compose stop photon postgis graphhopper || true
+	@# A re-import must start from an empty graph dir; GH will otherwise reuse whatever
+	@# a previous, possibly half-finished run left behind.
+	rm -rf $(DATA_DIR)/graph
+	@# NOT `docker compose run`: that inherits the service's `mem_limit: 7g`, which is the
+	@# *serving* budget. The import additionally holds the mmap'd Skadi DEM in page cache,
+	@# and both live in the same cgroup — under a 7g cap it thrashes (observed: 0.4% CPU,
+	@# 26 MB/s of disk reads, no log progress for 11 minutes). Worse, an -Xmx above the
+	@# cgroup cap is a latent OOM-kill once LM preparation grows the heap.
+	@# Run it directly, with the serving stack down, so heap (7g) and DEM page cache (~6g)
+	@# each get a real budget out of the box's 15 GiB.
+	docker run --rm --memory 13g \
+	  -v $(DATA_DIR):/data -v $(PWD)/config:/config \
+	  --entrypoint /bin/bash israelhikingmap/graphhopper:latest -c \
+	  "java -Xmx7g -jar /graphhopper/graphhopper-web-*.jar import /config/graphhopper.yml"
 	docker compose up -d photon postgis graphhopper
 
 tiles:
