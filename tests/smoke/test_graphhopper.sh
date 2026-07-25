@@ -7,8 +7,11 @@ PTS='[[112.7521,-7.2575],[112.6304,-7.9666]]'
 
 assert_http_ok "$BASE/health" "graphhopper health"
 
+# "elevation":true is REQUIRED to get the third ordinate back. A 3D graph is not enough:
+# GraphHopper defaults elevation to false and then returns 2D coordinates even when the
+# DEM was imported. Plan B's `route` and `elevation_profile` tools must send this too.
 plain=$(curl -s --max-time 60 -X POST "$BASE/route" -H 'Content-Type: application/json' \
-  -d "{\"points\":$PTS,\"profile\":\"car\",\"points_encoded\":false}")
+  -d "{\"points\":$PTS,\"profile\":\"car\",\"points_encoded\":false,\"elevation\":true}")
 dist=$(echo "$plain" | jq -r '.paths[0].distance // 0' 2>/dev/null || echo 0)
 if awk -v d="$dist" 'BEGIN{exit !(d>50000 && d<300000)}'; then
   echo "  ok: plain route ${dist}m"
@@ -39,8 +42,9 @@ else
   echo "  WARN: custom_model produced an identical route — may be legitimate if no motorway on this pair"
 fi
 
-# Elevation is what makes slope-aware scenic routing possible later; a 2-ordinate
-# coordinate means the Skadi DEM was not picked up at import time.
+# Elevation is what makes slope-aware scenic routing possible later. Given the request
+# above asked for it, a 2-ordinate coordinate means the Skadi DEM was not picked up at
+# import time.
 ncoord=$(echo "$plain" | jq '.paths[0].points.coordinates[0] | length' 2>/dev/null || echo 0)
 assert_eq "3" "$ncoord" "coordinates carry elevation (3 ordinates)"
 
