@@ -14,8 +14,11 @@ for layer in water transportation place boundary; do
   assert_contains "$meta" "\"$layer\"" "layer '$layer' present"
 done
 
-# z10/822/526 covers East Java. Range-request serving is what MapLibre relies on.
-code=$(curl -s -o /tmp/tile.mvt -w '%{http_code}' --max-time 15 "$BASE/$REGION_SLUG/10/822/526.mvt")
+# z10/832/532 covers East Java: Surabaya (112.7521,-7.2575) maps to exactly this tile via
+# x = (lon+180)/360 * 2^z, y = (1 - asinh(tan(lat))/pi)/2 * 2^z.
+# NOT 10/822/526 — that is 108.98E/4.92S, open water in the Java Sea, and it returns a
+# valid but near-empty 163-byte tile. A land tile is what proves the OSM data got in.
+code=$(curl -s -o /tmp/tile.mvt -w '%{http_code}' --max-time 15 "$BASE/$REGION_SLUG/10/832/532.mvt")
 assert_eq "200" "$code" "z10 East Java tile served"
 assert_file_min_size /tmp/tile.mvt 1000 "z10 East Java tile has content"
 
