@@ -39,6 +39,9 @@ db:
 	   CREATE INDEX IF NOT EXISTS osm_place_geom_idx ON osm_place USING GIST (geom); \
 	   ANALYZE osm_poi; ANALYZE osm_place;"
 
+dem:
+	@bash scripts/fetch_dem.sh
+
 up:
 	docker compose up -d
 
