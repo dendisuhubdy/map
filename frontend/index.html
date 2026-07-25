@@ -1,4 +1,79 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<title>map</title>
-<p>Plan C delivers the frontend.</p>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fieldwork — Indonesia trip planner</title>
+<meta name="description" content="Describe the trip you want. An agent plans it over open map data.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<main class="shell">
+
+  <section class="stage">
+    <div id="map"></div>
+
+    <header class="masthead">
+      <h1>Field<em>work</em></h1>
+      <div class="coordline">
+        <span class="tick"></span>
+        <span id="readout">6°10′S 106°49′E · INDONESIA</span>
+      </div>
+    </header>
+
+    <div class="scalebar" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </section>
+
+  <aside class="panel">
+
+    <div class="panel-head">
+      <p class="eyebrow">Expedition planner</p>
+      <p class="blurb">Describe the trip. Volcanoes, coastline, twisty backroads, a driving budget — it routes the real thing over OpenStreetMap.</p>
+    </div>
+
+    <div class="log" id="log" role="log" aria-live="polite" aria-label="Planning transcript">
+      <div class="seed">
+        <p class="seed-label">Try</p>
+        <button class="seed-btn" data-q="3-day drive through East Java — volcanoes and beaches, max 4 hours driving per day">
+          3-day drive through East Java — volcanoes and beaches, max 4h driving a day
+        </button>
+        <button class="seed-btn" data-q="Twisty backroads from Malang to Bromo. Avoid highways and tolls entirely.">
+          Twisty backroads Malang → Bromo, no highways or tolls
+        </button>
+        <button class="seed-btn" data-q="A coastal loop around Bali with viewpoints and beaches, nothing over 3 hours between stops">
+          Coastal loop around Bali, ≤3h between stops
+        </button>
+      </div>
+    </div>
+
+    <div class="itinerary" id="itinerary" hidden>
+      <p class="eyebrow">Itinerary</p>
+      <div id="legs"></div>
+    </div>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <textarea id="input" rows="1" placeholder="Describe your trip…" aria-label="Describe your trip"></textarea>
+      <button type="submit" id="send" aria-label="Plan trip">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+
+    <p class="status" id="status"></p>
+  </aside>
+
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.js"></script>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

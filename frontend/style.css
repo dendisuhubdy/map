@@ -1,0 +1,446 @@
+/* Fieldwork — expedition-instrument aesthetic.
+   Volcanic basalt ground, bone ink, signal-orange for anything the trip touches.
+   The map is the subject; the chrome is a survey instrument bolted beside it. */
+
+:root {
+  --basalt:     #14110E;
+  --basalt-2:   #1A1613;
+  --basalt-3:   #221C17;
+  --rule:       #302820;
+  --rule-soft:  #251F19;
+
+  --bone:       #EDE6DA;
+  --bone-dim:   #A99C8A;
+  --bone-faint: #6E6355;
+
+  --lava:       #E4622A;
+  --lava-lit:   #F07A3C;
+  --sea:        #4FA3A5;
+  --sea-lit:    #7FD4D6;
+  --sulphur:    #D9A441;
+
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans:  'Archivo', -apple-system, sans-serif;
+  --mono:  'IBM Plex Mono', ui-monospace, monospace;
+
+  --panel-w: 25rem;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--basalt);
+  color: var(--bone);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Film grain over everything — stops the flat panels reading as plastic. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 1fr var(--panel-w);
+  height: 100dvh;
+}
+
+/* ---------------------------------------------------------------- map stage */
+
+.stage { position: relative; overflow: hidden; }
+#map { position: absolute; inset: 0; background: var(--basalt); }
+
+/* Vignette so the panel edge doesn't cut the map dead. */
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 35% 40%, transparent 45%, rgba(10, 8, 6, 0.55) 100%);
+}
+
+.masthead {
+  position: absolute;
+  top: 1.75rem;
+  left: 2rem;
+  z-index: 3;
+  pointer-events: none;
+  animation: rise 0.9s var(--ease) both;
+}
+
+.masthead h1 {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 4.4vw, 3.9rem);
+  font-weight: 400;
+  line-height: 0.88;
+  letter-spacing: -0.02em;
+  color: var(--bone);
+  text-shadow: 0 2px 24px rgba(10, 8, 6, 0.85);
+}
+.masthead h1 em { font-style: italic; color: var(--lava-lit); }
+
+.coordline {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  color: var(--bone-dim);
+  text-shadow: 0 1px 12px rgba(10, 8, 6, 0.9);
+}
+.tick {
+  width: 5px; height: 5px;
+  background: var(--lava);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(228, 98, 42, 0.18);
+  animation: pulse 2.8s ease-in-out infinite;
+}
+
+/* Decorative survey scale, bottom-left of the map. */
+.scalebar {
+  position: absolute;
+  left: 2rem; bottom: 1.6rem;
+  z-index: 3;
+  display: flex;
+  pointer-events: none;
+  animation: rise 0.9s 0.25s var(--ease) both;
+}
+.scalebar span {
+  width: 26px; height: 5px;
+  border: 1px solid rgba(237, 230, 218, 0.35);
+  border-right: none;
+}
+.scalebar span:nth-child(odd) { background: rgba(237, 230, 218, 0.28); }
+.scalebar span:last-child { border-right: 1px solid rgba(237, 230, 218, 0.35); }
+
+/* ------------------------------------------------------------------- panel */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--basalt-2);
+  border-left: 1px solid var(--rule);
+  /* Contour lines, faint — the panel reads as vellum over the basalt. */
+  background-image:
+    repeating-linear-gradient(
+      -14deg,
+      transparent 0 22px,
+      rgba(237, 230, 218, 0.016) 22px 23px
+    );
+}
+
+.panel-head {
+  padding: 1.9rem 1.6rem 1.3rem;
+  border-bottom: 1px solid var(--rule-soft);
+  animation: rise 0.8s 0.1s var(--ease) both;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lava);
+  margin-bottom: 0.6rem;
+}
+
+.blurb {
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--bone-dim);
+  max-width: 34ch;
+}
+
+/* --------------------------------------------------------------- transcript */
+
+.log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.3rem 1.6rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.log::-webkit-scrollbar { width: 7px; }
+.log::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+
+.seed { animation: rise 0.8s 0.2s var(--ease) both; }
+.seed-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-faint);
+  margin-bottom: 0.75rem;
+}
+.seed-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.79rem;
+  line-height: 1.45;
+  color: var(--bone-dim);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.seed-btn:hover {
+  color: var(--bone);
+  border-color: var(--lava);
+  background: rgba(228, 98, 42, 0.06);
+  transform: translateX(3px);
+}
+
+.msg { margin-bottom: 1.15rem; animation: rise 0.45s var(--ease) both; }
+
+.msg.user {
+  padding: 0.7rem 0.9rem;
+  background: var(--basalt-3);
+  border-left: 2px solid var(--lava);
+  border-radius: 0 3px 3px 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.msg.agent {
+  font-size: 0.87rem;
+  line-height: 1.65;
+  color: var(--bone);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.msg.agent strong { color: var(--sulphur); font-weight: 600; }
+
+.msg.error {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #E88A6A;
+  border-left: 2px solid #A03A1E;
+  padding-left: 0.75rem;
+}
+
+/* Reasoning — present but recessive; it is context, not the answer. */
+.think {
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--bone-faint);
+  font-style: italic;
+  border-left: 1px solid var(--rule);
+  padding-left: 0.75rem;
+  margin-bottom: 1rem;
+  max-height: 7rem;
+  overflow: hidden;
+  position: relative;
+}
+.think::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2rem;
+  background: linear-gradient(transparent, var(--basalt-2));
+}
+
+/* Tool activity reads as instrument telemetry. */
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.42rem 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  color: var(--bone-dim);
+  border-bottom: 1px dashed var(--rule-soft);
+  animation: slide 0.35s var(--ease) both;
+}
+.tool .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--sulphur);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.tool.done .dot { background: var(--sea); animation: none; }
+.tool.failed .dot { background: #C4553A; animation: none; }
+.tool .name { color: var(--bone); }
+.tool .arg {
+  color: var(--bone-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- itinerary */
+
+.itinerary {
+  padding: 1.1rem 1.6rem;
+  border-top: 1px solid var(--rule);
+  max-height: 34vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.leg {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.6rem 0.2rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rule-soft);
+  color: var(--bone-dim);
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.2s, padding-left 0.2s;
+}
+.leg:hover, .leg.active { color: var(--bone); padding-left: 0.55rem; }
+.leg.active .leg-idx { color: var(--lava-lit); border-color: var(--lava); }
+
+.leg-idx {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--bone-faint);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.12rem 0.32rem;
+  flex-shrink: 0;
+  transition: color 0.2s, border-color 0.2s;
+}
+.leg-body { flex: 1; min-width: 0; }
+.leg-name { font-size: 0.8rem; line-height: 1.35; }
+.leg-stat {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--bone-faint);
+  margin-top: 0.2rem;
+  letter-spacing: 0.04em;
+}
+
+/* --------------------------------------------------------------- composer */
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.6rem 0.55rem;
+  border-top: 1px solid var(--rule);
+  background: var(--basalt-2);
+}
+
+#input {
+  flex: 1;
+  max-height: 8rem;
+  padding: 0.62rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--bone);
+  background: var(--basalt);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  resize: none;
+  transition: border-color 0.2s;
+}
+#input::placeholder { color: var(--bone-faint); }
+#input:focus { outline: none; border-color: var(--lava); }
+
+#send {
+  display: grid;
+  place-items: center;
+  width: 2.3rem; height: 2.3rem;
+  flex-shrink: 0;
+  color: var(--basalt);
+  background: var(--lava);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+#send:hover:not(:disabled) { background: var(--lava-lit); transform: translateX(2px); }
+#send:disabled { background: var(--rule); color: var(--bone-faint); cursor: not-allowed; transform: none; }
+
+.status {
+  padding: 0 1.6rem 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--bone-faint);
+  min-height: 1.4rem;
+}
+.status.busy { color: var(--sulphur); }
+
+/* ------------------------------------------------------------- maplibre trim */
+
+.maplibregl-ctrl-attrib {
+  background: rgba(20, 17, 14, 0.82) !important;
+  font-family: var(--mono) !important;
+  font-size: 0.58rem !important;
+}
+.maplibregl-ctrl-attrib a { color: var(--bone-faint) !important; }
+.maplibregl-ctrl-group {
+  background: var(--basalt-2) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: none !important;
+}
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--rule) !important; }
+.maplibregl-ctrl-group button span { filter: invert(0.85) sepia(0.2); }
+
+/* -------------------------------------------------------------- animation */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes slide {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ mobile */
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: 42dvh 1fr; }
+  .panel { border-left: none; border-top: 1px solid var(--rule); }
+  .masthead { top: 1.1rem; left: 1.2rem; }
+  .scalebar { display: none; }
+  .panel-head { padding: 1.2rem 1.2rem 1rem; }
+  .log, .itinerary { padding-left: 1.2rem; padding-right: 1.2rem; }
+  .composer { padding: 0.8rem 1.2rem 0.5rem; }
+  .status { padding-left: 1.2rem; }
+  .itinerary { max-height: 26vh; }
+}
