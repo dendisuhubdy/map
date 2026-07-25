@@ -52,3 +52,13 @@ services:
     ports:
       - "127.0.0.1:8989:8989"
     mem_limit: 7g
+
+  tiles:
+    image: protomaps/go-pmtiles:latest
+    restart: unless-stopped
+    command: ["serve","/data/tiles","--cors=*","--port=8080","--public-url=http://127.0.0.1:8080"]
+    volumes:
+      - ${DATA_DIR}/tiles:/data/tiles:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 1g

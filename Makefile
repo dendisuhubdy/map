@@ -49,6 +49,18 @@ graph:
 	  "java -Xmx10g -jar /graphhopper/graphhopper.jar import -c /config/graphhopper.yml"
 	docker compose up -d photon postgis graphhopper
 
+tiles:
+	@echo "stopping serving stack — Planetiler wants the RAM"
+	docker compose stop photon postgis graphhopper || true
+	mkdir -p $(DATA_DIR)/tiles $(DATA_DIR)/tmp
+	docker run --rm -e JAVA_TOOL_OPTIONS=-Xmx8g \
+	  -v $(DATA_DIR):/data ghcr.io/onthegomap/planetiler:latest \
+	  --osm-path=/data/osm/$(REGION_SLUG)-latest.osm.pbf \
+	  --output=/data/tiles/$(REGION_SLUG).pmtiles \
+	  --tmpdir=/data/tmp --download --force
+	rm -rf $(DATA_DIR)/tmp
+	docker compose up -d tiles postgis photon
+
 up:
 	docker compose up -d
 
