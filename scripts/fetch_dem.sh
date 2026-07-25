@@ -5,9 +5,21 @@
 # the graph build reproducible and re-runnable offline. Ocean squares have no
 # tile and legitimately 404 — that is normal, not an error.
 set -euo pipefail
-: "${REGION_BBOX:?}" "${DATA_DIR:?}"
+: "${DATA_DIR:?}"
 
-read -r MIN_LON MIN_LAT MAX_LON MAX_LAT <<< "$REGION_BBOX"
+# Bounds arrive as four scalars. They used to be one space-separated REGION_BBOX,
+# which forced a choice with no good answer: quoted, GNU make's `include` keeps the
+# quote characters in the value; unquoted, `. ./.env` in any shell parses the
+# second field as a command ("32.5: command not found") and every field after the
+# first is silently lost. Four scalars are unambiguous in make, compose and shell.
+if [[ -n "${REGION_BBOX:-}" && -z "${REGION_MIN_LON:-}" ]]; then
+  # Back-compat for an .env still carrying the old single variable.
+  read -r REGION_MIN_LON REGION_MIN_LAT REGION_MAX_LON REGION_MAX_LAT \
+    <<< "${REGION_BBOX//\"/}"
+fi
+: "${REGION_MIN_LON:?}" "${REGION_MIN_LAT:?}" "${REGION_MAX_LON:?}" "${REGION_MAX_LAT:?}"
+MIN_LON="$REGION_MIN_LON"; MIN_LAT="$REGION_MIN_LAT"
+MAX_LON="$REGION_MAX_LON"; MAX_LAT="$REGION_MAX_LAT"
 
 DEST="$DATA_DIR/dem"
 BASE="https://s3.amazonaws.com/elevation-tiles-prod/skadi"
