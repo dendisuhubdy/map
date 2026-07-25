@@ -82,6 +82,36 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 Verified state: Docker 29.6.2, Compose 5.3.1, 15 GiB RAM, 8 CPUs, 4 GiB swap,
 303 G free on `/data`, ufw active.
 
+## Known host quirk: osmdata.openstreetmap.de is throttled from SGP1
+
+Planetiler needs `water-polygons-split-3857.zip` (927 MB) from
+`osmdata.openstreetmap.de`. From this droplet that transfer runs at **~10 kB/s** — a
+~26-hour download. The host itself is healthy and responsive (it returns a 404 for a
+missing path in 0.4 s), and the same file pulls at **4.3 MB/s** from a workstation, so
+this is throttling or misrouting specific to the DigitalOcean SGP1 range, not an outage.
+
+Planetiler surfaces this as a progress bar that never advances, not as an error, so
+`make tiles` guards the file with a throughput floor and fails fast with instructions.
+
+To side-load:
+
+```bash
+# workstation
+curl -L -O https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip
+scp water-polygons-split-3857.zip map-sgp1:/data/sources/
+```
+
+`natural_earth_vector.sqlite.zip` and `lake_centerline.shp.zip` come from other hosts and
+download normally.
+
+## Memory budgeting for imports
+
+The Compose `mem_limit` values are **serving** budgets. Imports must not inherit them:
+`docker compose run graphhopper` put a 10 GB-max heap and the mmap'd Skadi DEM in the
+same 7 GB cgroup, which thrashed at 0.4% CPU and 26 MB/s of disk reads. `make graph`
+therefore uses a plain `docker run --memory 13g` with `-Xmx7g`, run with the serving
+stack stopped — leaving ~6 GB of page cache for the DEM. Same import, same box: 198% CPU.
+
 ## Deploy loop
 
 ```bash

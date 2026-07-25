@@ -61,7 +61,30 @@ graph:
 	  "java -Xmx7g -jar /graphhopper/graphhopper-web-*.jar import /config/graphhopper.yml"
 	docker compose up -d photon postgis graphhopper
 
-tiles:
+# Planetiler's own --download fetches this, but from this droplet the route to
+# osmdata.openstreetmap.de throttles to ~10 kB/s: 927 MB would take ~26 hours, and
+# Planetiler reports it as a progress bar that never moves rather than as an error.
+# The same file pulls at 4.3 MB/s from a workstation, so it gets side-loaded. Try the
+# direct fetch with a throughput floor; if the floor is not met, stop at once and say
+# exactly what to do instead. Present file => no-op, so `make tiles` stays re-runnable.
+$(DATA_DIR)/sources/water-polygons-split-3857.zip:
+	@mkdir -p $(DATA_DIR)/sources
+	@echo "fetching water polygons (aborts if < 100 kB/s sustained for 60s)..."
+	@curl -fL --retry 2 --speed-limit 102400 --speed-time 60 \
+	    -o $@.part https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip \
+	  && mv $@.part $@ \
+	  || { rm -f $@.part; \
+	       echo "" >&2; \
+	       echo "ERROR: water polygons could not be fetched at a usable speed." >&2; \
+	       echo "This host's route to osmdata.openstreetmap.de is throttled (~10 kB/s)," >&2; \
+	       echo "which is a ~26h download. Side-load it from a better-connected machine:" >&2; \
+	       echo "" >&2; \
+	       echo "  curl -L -O https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip" >&2; \
+	       echo "  scp water-polygons-split-3857.zip map-sgp1:$(DATA_DIR)/sources/" >&2; \
+	       echo "" >&2; \
+	       exit 1; }
+
+tiles: $(DATA_DIR)/sources/water-polygons-split-3857.zip
 	@echo "stopping serving stack — Planetiler wants the RAM"
 	docker compose stop photon postgis graphhopper || true
 	mkdir -p $(DATA_DIR)/tiles $(DATA_DIR)/tmp
