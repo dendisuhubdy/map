@@ -1,14 +1,17 @@
-# GraphHopper routing configuration.
+# GraphHopper routing configuration (GraphHopper 12.x).
 #
-# SPEC CORRECTION (design spec §6 said "CH + elevation"):
+# SPEC CORRECTION (design spec §5/§6 originally said "CH + elevation"):
 # Contraction Hierarchies bake the cost function into the preprocessed graph, so a
 # CH-only build CANNOT answer a query carrying an arbitrary runtime custom_model —
 # which is exactly what the agent's `route` tool sends on every call. Landmarks (LM)
 # can. So we prepare BOTH:
 #   * profiles_lm -> serves requests with "ch.disable": true + a custom_model
 #   * profiles_ch -> serves the plain fixed-cost fast path
-# tests/smoke/test_graphhopper.sh asserts the runtime custom_model path works; if
-# profiles_lm is ever dropped, that assertion fails rather than silently degrading.
+# tests/smoke/test_graphhopper.sh asserts the runtime custom_model path works, so
+# dropping profiles_lm fails loudly rather than silently killing the core feature.
+#
+# Structure follows the image's own config-example.yml; deviating from it is what
+# produced the 'Missing import.osm.ignored_highways' failure.
 
 graphhopper:
   datareader.file: /data/osm/indonesia-latest.osm.pbf
@@ -18,20 +21,19 @@ graphhopper:
   graph.elevation.cache_dir: /data/dem/
   graph.elevation.dataaccess: MMAP
 
-  # Encoded values the agent's custom models are allowed to reference. A model
-  # naming anything absent from this list is rejected at request time, so this is
-  # effectively the vocabulary the LLM compiles natural language into.
-  graph.encoded_values: car_access, car_average_speed, road_class, road_environment,
-                        surface, smoothness, max_speed, toll, track_type,
-                        average_slope, max_slope, curvature
+  # The vocabulary the agent's natural-language custom models compile into. A model
+  # referencing anything absent here is rejected at request time.
+  graph.encoded_values: |
+    car_access, car_average_speed, road_class, road_environment, roundabout,
+    max_speed, surface, smoothness, toll, track_type, ferry_speed,
+    average_slope, max_slope, curvature
 
   profiles:
     - name: car
-      weighting: custom
-      # Empty model = plain fastest. Per-request custom_model overrides it.
+      # Empty inline model = plain fastest. Per-request custom_model overrides it.
       custom_model: {}
 
-  # REQUIRED for runtime custom models. Do not remove.
+  # REQUIRED for runtime custom models. The example ships this empty; we do not.
   profiles_lm:
     - profile: car
 
@@ -39,14 +41,24 @@ graphhopper:
   profiles_ch:
     - profile: car
 
+  # Required in GH12 — omitting it throws IllegalArgumentException at init.
+  # Car-only routing, so pedestrian/cycle ways are skipped at import.
+  import.osm.ignored_highways: footway,cycleway,path,pedestrian,steps
+
   prepare.min_network_size: 200
+  prepare.subnetworks.threads: 1
+  routing.snap_preventions_default: tunnel, bridge, ferry
   routing.non_ch.max_waypoint_distance: 1000000
+  graph.dataaccess.default_type: RAM_STORE
 
 server:
   application_connectors:
     - type: http
       port: 8989
       bind_host: 0.0.0.0
+      max_request_header_size: 50k
+  request_log:
+    appenders: []
   admin_connectors:
     - type: http
       port: 8990
@@ -55,4 +67,5 @@ server:
 logging:
   appenders:
     - type: console
+      time_zone: UTC
       threshold: INFO
