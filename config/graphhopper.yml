@@ -1,0 +1,58 @@
+# GraphHopper routing configuration.
+#
+# SPEC CORRECTION (design spec §6 said "CH + elevation"):
+# Contraction Hierarchies bake the cost function into the preprocessed graph, so a
+# CH-only build CANNOT answer a query carrying an arbitrary runtime custom_model —
+# which is exactly what the agent's `route` tool sends on every call. Landmarks (LM)
+# can. So we prepare BOTH:
+#   * profiles_lm -> serves requests with "ch.disable": true + a custom_model
+#   * profiles_ch -> serves the plain fixed-cost fast path
+# tests/smoke/test_graphhopper.sh asserts the runtime custom_model path works; if
+# profiles_lm is ever dropped, that assertion fails rather than silently degrading.
+
+graphhopper:
+  datareader.file: /data/osm/indonesia-latest.osm.pbf
+  graph.location: /data/graph
+
+  graph.elevation.provider: skadi
+  graph.elevation.cache_dir: /data/dem/
+  graph.elevation.dataaccess: MMAP
+
+  # Encoded values the agent's custom models are allowed to reference. A model
+  # naming anything absent from this list is rejected at request time, so this is
+  # effectively the vocabulary the LLM compiles natural language into.
+  graph.encoded_values: car_access, car_average_speed, road_class, road_environment,
+                        surface, smoothness, max_speed, toll, track_type,
+                        average_slope, max_slope, curvature
+
+  profiles:
+    - name: car
+      weighting: custom
+      # Empty model = plain fastest. Per-request custom_model overrides it.
+      custom_model: {}
+
+  # REQUIRED for runtime custom models. Do not remove.
+  profiles_lm:
+    - profile: car
+
+  # Fixed fast path only; custom-model requests must send "ch.disable": true.
+  profiles_ch:
+    - profile: car
+
+  prepare.min_network_size: 200
+  routing.non_ch.max_waypoint_distance: 1000000
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 0.0.0.0
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: 127.0.0.1
+
+logging:
+  appenders:
+    - type: console
+      threshold: INFO

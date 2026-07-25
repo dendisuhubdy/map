@@ -42,6 +42,13 @@ db:
 dem:
 	@bash scripts/fetch_dem.sh
 
+graph:
+	@echo "stopping serving stack — the import wants the RAM"
+	docker compose stop photon postgis || true
+	docker compose run --rm --entrypoint /bin/bash graphhopper -c \
+	  "java -Xmx10g -jar /graphhopper/graphhopper.jar import -c /config/graphhopper.yml"
+	docker compose up -d photon postgis graphhopper
+
 up:
 	docker compose up -d
 

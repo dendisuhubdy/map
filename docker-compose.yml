@@ -39,3 +39,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  graphhopper:
+    image: israelhikingmap/graphhopper:latest
+    restart: unless-stopped
+    command: ["--input","/data/osm/${REGION_SLUG}-latest.osm.pbf","--config","/config/graphhopper.yml"]
+    environment:
+      JAVA_OPTS: "-Xmx6g -Xms2g"
+    volumes:
+      - ${DATA_DIR}:/data
+      - ./config:/config
+    ports:
+      - "127.0.0.1:8989:8989"
+    mem_limit: 7g
