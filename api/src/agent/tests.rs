@@ -324,6 +324,44 @@ async fn every_tool_is_strict_and_closed() {
     }
 }
 
+/// Structured outputs support only a subset of JSON Schema. `minItems`/`maxItems`
+/// above 1, and the numeric/string range keywords, are rejected at request time
+/// with a 400 — which surfaces as the whole conversation failing, not as a bad
+/// tool call. Runtime validation in the tool functions covers these instead.
+#[tokio::test]
+async fn tool_schemas_avoid_unsupported_json_schema_keywords() {
+    const BANNED: [&str; 6] =
+        ["minItems", "maxItems", "minimum", "maximum", "minLength", "maxLength"];
+
+    fn walk(v: &Value, path: &str, found: &mut Vec<String>) {
+        match v {
+            Value::Object(map) => {
+                for (k, child) in map {
+                    if BANNED.contains(&k.as_str()) {
+                        // minItems/maxItems of 0 or 1 are permitted; anything else is not.
+                        let ok = matches!(k.as_str(), "minItems" | "maxItems")
+                            && matches!(child.as_u64(), Some(0) | Some(1));
+                        if !ok {
+                            found.push(format!("{path}.{k}"));
+                        }
+                    }
+                    walk(child, &format!("{path}.{k}"), found);
+                }
+            }
+            Value::Array(items) => {
+                for (i, child) in items.iter().enumerate() {
+                    walk(child, &format!("{path}[{i}]"), found);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut found = Vec::new();
+    walk(&crate::tools::definitions(), "tools", &mut found);
+    assert!(found.is_empty(), "unsupported schema keywords present: {found:?}");
+}
+
 /// The three non-default /route parameters, asserted at the point they are built.
 /// A regression here is silent: elevation would vanish while ascend still reports,
 /// and custom models would 400 only for requests that carry one.

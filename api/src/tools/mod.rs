@@ -15,12 +15,12 @@ use serde_json::{json, Value};
 pub struct ToolOutcome {
     pub content: String,
     pub is_error: bool,
-    pub map_push: Option<MapPush>,
+    pub map_push: Option<MapPush>
 }
 
 pub enum MapPush {
     Geometry(Value),
-    Markers(Value),
+    Markers(Value)
 }
 
 impl ToolOutcome {
@@ -39,7 +39,7 @@ impl ToolOutcome {
         Self {
             content: json!({ "error": message.into() }).to_string(),
             is_error: true,
-            map_push: None,
+            map_push: None
         }
     }
 }
@@ -48,7 +48,7 @@ impl ToolOutcome {
 pub struct Tools {
     pub cfg: Config,
     pub http: reqwest::Client,
-    pub pool: Option<Pool>,
+    pub pool: Option<Pool>
 }
 
 impl Tools {
@@ -58,7 +58,7 @@ impl Tools {
             "search_poi" => search_poi::run(self, input).await,
             "route" => route::run(self, input).await,
             "elevation_profile" => elevation::run(self, input).await,
-            other => ToolOutcome::err(format!("unknown tool '{other}'")),
+            other => ToolOutcome::err(format!("unknown tool '{other}'"))
         }
     }
 }
@@ -83,9 +83,7 @@ pub fn definitions() -> Value {
                     "bbox": {
                         "type": ["array", "null"],
                         "description": "Optional bias box [min_lon, min_lat, max_lon, max_lat]. Restricts results to a region.",
-                        "items": { "type": "number" },
-                        "minItems": 4,
-                        "maxItems": 4
+                        "items": { "type": "number" }
                     }
                 },
                 "required": ["query", "bbox"],
@@ -107,9 +105,7 @@ pub fn definitions() -> Value {
                     "bbox": {
                         "type": "array",
                         "description": "Search box [min_lon, min_lat, max_lon, max_lat].",
-                        "items": { "type": "number" },
-                        "minItems": 4,
-                        "maxItems": 4
+                        "items": { "type": "number" }
                     },
                     "limit": {
                         "type": "integer",
@@ -132,11 +128,8 @@ pub fn definitions() -> Value {
                         "description": "Ordered [lon, lat] pairs. At least two.",
                         "items": {
                             "type": "array",
-                            "items": { "type": "number" },
-                            "minItems": 2,
-                            "maxItems": 2
-                        },
-                        "minItems": 2
+                            "items": { "type": "number" }
+                        }
                     },
                     "profile": {
                         "type": "string",
@@ -165,11 +158,8 @@ pub fn definitions() -> Value {
                         "description": "Ordered [lon, lat] pairs describing the leg.",
                         "items": {
                             "type": "array",
-                            "items": { "type": "number" },
-                            "minItems": 2,
-                            "maxItems": 2
-                        },
-                        "minItems": 2
+                            "items": { "type": "number" }
+                        }
                     },
                     "samples": {
                         "type": "integer",
