@@ -30,8 +30,10 @@ graphhopper:
 
   profiles:
     - name: car
-      # Empty inline model = plain fastest. Per-request custom_model overrides it.
-      custom_model: {}
+      # Built-in car model shipped inside the jar. An empty inline custom_model is
+      # rejected ("At least one initial statement under 'speed' is required") — the
+      # base profile must define speed; a request-time custom_model layers on top.
+      custom_model_files: [car.json]
 
   # REQUIRED for runtime custom models. The example ships this empty; we do not.
   profiles_lm:
