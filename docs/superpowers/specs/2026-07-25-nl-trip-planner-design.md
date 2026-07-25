@@ -45,13 +45,13 @@ This is a **personal tool, not a product**. Polish and audience are secondary; c
 | # | Decision | Rationale |
 |---|---|---|
 | 1 | NL layer is an **agentic trip planner**, not a single-shot NL→weights compiler | Strictly a superset — the compiler capability lives inside it as the `custom_model` argument to `route` |
-| 2 | Deploy to a **DigitalOcean droplet** (16 GB / 8 vCPU, ~$96/mo) + 100 GB block storage (~$10/mo) | Local laptop had 10 GB free on a 99%-full disk; the pipeline needs ~22 GB and real RAM |
+| 2 | Deploy to a **DigitalOcean droplet** (`s-8vcpu-16gb`, sgp1, $96/mo). **No block storage** | Local laptop had 10 GB free on a 99%-full disk. *Amended 2026-07-25 during implementation:* the droplet ships 320 GB of local SSD, so the planned 100 GB volume was dropped — everything under `/data` is reproducible via `make all`, so a rebuild costs re-import time, not unique state. Reversal procedure in `docs/runbook.md` |
 | 3 | **Docker Compose**, but every service strictly 12-factor | Four stateful services pinned to one machine's disk. K8s adds a control plane and PVCs for zero benefit at one node; 12-factor discipline keeps the later translation cheap |
 | 4 | **Rust + axum** for the API and agent service | Mostly I/O orchestration; single static binary deploys cleanly |
 | 5 | **Raw HTTP** to the Anthropic API, hand-rolled agent loop | No official Rust SDK exists. Community crates lag the API and would not expose the two beta features this design uses |
-| 6 | **Photon 1.x + embedded OpenSearch** for geocoding | Fuzzy, multilingual, typo-tolerant place search with real ranking. Current maintained line; dumps ~40% smaller than 0.7.x. OpenSearch is the Apache-2.0 Elasticsearch fork |
+| 6 | **Photon 0.7.4 + embedded Elasticsearch** for geocoding | Fuzzy, multilingual, typo-tolerant place search with real ranking. *Amended 2026-07-25:* originally specified Photon 1.x + OpenSearch, but the only published Indonesia extract is an **Elasticsearch** index that will not load on the 1.x/OpenSearch line — empirically verified. Full evidence and rejected alternatives in `docs/decisions/photon-index-source.md` |
 | 7 | **PostGIS** (osm2pgsql flex) for POI category search | OSM tagging is a finite documented vocabulary an LLM maps onto near-perfectly. Exact, fast, fully explainable |
-| 8 | **GraphHopper** for routing, with JSON CustomModels | CustomModel is a bounded DSL over encoded values — a clean compilation target for natural-language preferences |
+| 8 | **GraphHopper** for routing, with JSON CustomModels. Graph prepared with **Landmarks (LM) as well as CH** | CustomModel is a bounded DSL over encoded values — a clean compilation target for natural-language preferences. *Amended 2026-07-25:* CH bakes the cost function into the preprocessed graph and **cannot serve an arbitrary runtime `custom_model`**, which the `route` tool sends on every call. LM can. Requests carrying a custom model must send `ch.disable: true`; CH remains for the fixed fast path |
 | 9 | **Skadi** for elevation, not Copernicus DEM | GraphHopper-native built-in provider. Copernicus would need a custom provider for no Phase-1 benefit |
 | 10 | **Planetiler → PMTiles**, served over HTTP range requests | Single-file basemap, no tile server database |
 | 11 | **Git push → rebuild on host** dev loop | Repo stays the source of truth; nothing lost if the droplet dies |
@@ -75,7 +75,7 @@ Two strictly separated concerns: an **offline pipeline** producing artifacts on 
 │  Geofabrik indonesia-latest.osm.pbf                       │
 │    ├─ Planetiler          → /data/tiles/indonesia.pmtiles │
 │    ├─ osm2pgsql (flex)    → PostGIS: osm_poi, osm_place   │
-│    ├─ GraphHopper import  → /data/graph/  (CH + elevation)│
+│    ├─ GraphHopper import  → /data/graph/  (LM + CH + elev)│
 │    ├─ Photon dump fetch   → /data/photon/                 │
 │    └─ scenic_score.py     → per-way scores      [Phase 2] │
 └───────────────────────────────────────────────────────────┘
@@ -96,15 +96,22 @@ Two strictly separated concerns: an **offline pipeline** producing artifacts on 
 
 One `Makefile`, one target per artifact, each idempotent and independently re-runnable.
 
-| Target | Produces | Approx. size |
+Sizes below are **measured** as of 2026-07-25 except where marked estimated; the
+original spec estimates ran high, several by an order of magnitude.
+
+| Target | Produces | Size |
 |---|---|---|
-| `make fetch` | `/data/osm/indonesia-latest.osm.pbf` | ~1 GB |
-| `make tiles` | `/data/tiles/indonesia.pmtiles` | ~4 GB (+~5 GB transient) |
-| `make db` | PostGIS `osm_poi`, `osm_place` | ~4 GB |
-| `make graph` | `/data/graph/` | ~3 GB |
-| `make dem` | `/data/dem/` (Skadi tiles) | ~8 GB |
-| `make photon` | `/data/photon/` | ~2 GB |
-| `make all` | all of the above | **~22 GB** |
+| `make fetch` | `/data/osm/indonesia-latest.osm.pbf` | 1.7 GB *(est. 1 GB)* |
+| `make tiles` | `/data/tiles/indonesia.pmtiles` | *est. ~4 GB (+~5 GB transient)* |
+| `make db` | PostGIS `osm_poi` (606k rows), `osm_place` (117k rows) | **190 MB** *(est. 4 GB)* |
+| `make graph` | `/data/graph/` | *est. ~3 GB* |
+| `make dem` | `/data/dem/` (Skadi tiles) | ~1.7 GB and counting *(est. 8 GB)* |
+| `make photon` | `/data/photon/` | 903 MB |
+| `make all` | all of the above | **~10 GB projected** *(est. 22 GB)* |
+
+The `db` figure is the one worth internalising: filtering to POI and place tags in
+the osm2pgsql flex config produced 190 MB rather than the estimated 4 GB, which is
+the difference between a table that stays in cache and one that does not.
 
 ### osm2pgsql configuration
 
@@ -308,10 +315,10 @@ Python rather than Rust for this one step: it is an offline batch job outside th
 
 | Item | Monthly |
 |---|---|
-| Droplet 16 GB / 8 vCPU | ~$96 |
-| Block storage 100 GB | ~$10 |
+| Droplet `s-8vcpu-16gb` (16 GB / 8 vCPU / 320 GB SSD, sgp1) | $96 |
+| ~~Block storage 100 GB~~ — dropped, see decision 2 | ~~$10~~ |
 | Anthropic API (Opus 5, $5/$25 per MTok) | usage-based; a trip plan is a few cents |
-| **Fixed total** | **~$106** |
+| **Fixed total** | **$96** |
 
 ## 16. Open items
 
