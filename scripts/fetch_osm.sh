@@ -25,7 +25,10 @@ if [[ -f "$PBF" ]]; then
 fi
 
 echo "Downloading ${BASE}"
-curl -fL --retry 3 --progress-bar -o "${PBF}.part" "$BASE"
+# A progress bar in a non-TTY (CI, ssh heredoc) emits tens of thousands of
+# redraw lines. Only ask for one when stderr is actually a terminal.
+if [[ -t 2 ]]; then PROGRESS=(--progress-bar); else PROGRESS=(--no-progress-meter); fi
+curl -fL --retry 3 "${PROGRESS[@]}" -o "${PBF}.part" "$BASE"
 
 ACTUAL=$(md5sum "${PBF}.part" | awk '{print $1}')
 if [[ "$EXPECTED" != "$ACTUAL" ]]; then
