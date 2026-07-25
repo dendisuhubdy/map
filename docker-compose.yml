@@ -72,6 +72,37 @@ services:
       - "127.0.0.1:8080:8080"
     mem_limit: 1g
 
+  # Rust/axum agent service. Talks to the three data services over the compose
+  # network and to the Anthropic API outbound; it is never published directly —
+  # Caddy proxies /api/* to it.
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      PHOTON_URL: http://photon:2322
+      GRAPHHOPPER_URL: http://graphhopper:8989
+      POSTGRES_HOST: postgis
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-claude-opus-5}
+      AGENT_EFFORT: ${AGENT_EFFORT:-high}
+      RUST_LOG: ${RUST_LOG:-info,map_api=debug}
+    depends_on:
+      - postgis
+      - photon
+      - graphhopper
+    ports:
+      - "127.0.0.1:8000:8000"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   # The only service published on a public interface. Everything else binds to
   # 127.0.0.1 and is reachable only across the compose network; tests/smoke/test_edge.sh
   # asserts that. Certificates are issued by Let's Encrypt on first start and persist

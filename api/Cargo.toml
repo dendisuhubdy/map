@@ -1,0 +1,26 @@
+[package]
+name = "map-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures = "0.3"
+# with-serde_json-1 lets jsonb columns (osm_poi.tags) deserialize straight into
+# serde_json::Value instead of going through a string round-trip.
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1"] }
+deadpool-postgres = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+thiserror = "2"
+rand = "0.8"
+urlencoding = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
