@@ -11,11 +11,17 @@ style.sources.route = { type: 'geojson', data: EMPTY_FC };
 style.sources['route-active'] = { type: 'geojson', data: EMPTY_FC };
 style.sources.pois = { type: 'geojson', data: EMPTY_FC };
 
+// Default view: California. NOTE — the basemap tileset currently covers Indonesia
+// only, so this renders as empty ground until the North America build lands. The
+// view is deliberately set ahead of the data so the default does not need changing
+// again when it does.
+const DEFAULT_VIEW = { center: [-119.42, 36.78], zoom: 5.4 };
+
 const map = new maplibregl.Map({
   container: 'map',
   style,
-  center: [113.9, -2.5],
-  zoom: 4.2,
+  center: DEFAULT_VIEW.center,
+  zoom: DEFAULT_VIEW.zoom,
   attributionControl: { compact: true },
   dragRotate: false,
 });
